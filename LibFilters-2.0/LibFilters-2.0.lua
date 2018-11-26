@@ -384,7 +384,6 @@ end
 function LibFilters:RequestUpdate(filterType)
     local updaterName = filterTypeToUpdaterName[filterType]
     local callbackName = "LibFilters_updateInventory_" .. updaterName
-d("[LibFilters]RequestUpdate, filterType: " ..tostring(filterType) .. ", updaterName: " .. tostring(updaterName))
     local function Update()
         EVENT_MANAGER:UnregisterForUpdate(callbackName)
         inventoryUpdaters[updaterName]()
