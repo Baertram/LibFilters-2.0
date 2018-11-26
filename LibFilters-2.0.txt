@@ -1,7 +1,9 @@
 ## Title: LibFilters-2.0
 ## Author: Randactyl, ingeniousclown, et al.
-## Version: 2.0r3.7
-## APIVersion: 100023 100024
+## Version: 2.0r3.8
+## AddOnVersion: 238
+## APIVersion: 100025 100026
+## DependsOn: LibStub
 
 LibStub\LibStub.lua
 LibFilters-2.0\LibFilters-2.0.lua

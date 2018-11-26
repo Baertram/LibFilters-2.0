@@ -289,6 +289,67 @@ helpers["GetIndividualInventorySlotsAndAddToScrollData"] = {
     },
  }
 
+--enable LF_SMITHING_RESEARCH_DIALOG -- since API 100025 Murkmire
+helpers["SMITHING_RESEARCH_SELECT"] = {
+    version = 1,
+    locations = {
+        [1] = SMITHING_RESEARCH_SELECT,
+    },
+    helper = {
+        funcName = "SetupDialog",
+        func = function(self, craftingType, researchLineIndex, traitIndex)
+            --Overwrite the local function "IsResearchableItem" of file /esoui/ingame/crafting/keyboard/smithingresearch_keyboard.lua
+            --inside function ZO_SmithingResearchSelect:SetupDialog
+            local function IsResearchableItem(bagId, slotIndex)
+                local result = ZO_SharedSmithingResearch.IsResearchableItem(bagId, slotIndex, craftingType, researchLineIndex, traitIndex)
+                --Is the item researchable? Then check if additional filters are registered
+                if result then
+                    if type(self.additionalFilter) == "function" then
+                        result = result and self.additionalFilter(bagId, slotIndex)
+                    end
+                end
+                return result
+            end -- function IsResearchableItem(bagId, slotIndex)
+
+            --======== Source code of original function =======================
+            local listDialog = ZO_InventorySlot_GetItemListDialog()
+
+            local _, _, _, timeRequiredForNextResearchSecs = GetSmithingResearchLineInfo(craftingType, researchLineIndex)
+            local formattedTime = ZO_FormatTime(timeRequiredForNextResearchSecs, TIME_FORMAT_STYLE_COLONS, TIME_FORMAT_PRECISION_TWELVE_HOUR)
+
+            listDialog:SetAboveText(GetString(SI_SMITHING_RESEARCH_DIALOG_SELECT))
+            listDialog:SetBelowText(zo_strformat(SI_SMITHING_RESEARCH_DIALOG_CONSUME, formattedTime))
+            listDialog:SetEmptyListText("")
+
+            listDialog:ClearList()
+
+            --[[
+            --Overwritten original function to filter items with additional filters/filter functions
+            local function IsResearchableItem(bagId, slotIndex)
+                return ZO_SharedSmithingResearch.IsResearchableItem(bagId, slotIndex, craftingType, researchLineIndex, traitIndex)
+            end
+            ]]
+
+            local virtualInventoryList = PLAYER_INVENTORY:GenerateListOfVirtualStackedItems(INVENTORY_BACKPACK, IsResearchableItem)
+            PLAYER_INVENTORY:GenerateListOfVirtualStackedItems(INVENTORY_BANK, IsResearchableItem, virtualInventoryList)
+
+            for itemId, itemInfo in pairs(virtualInventoryList) do
+                itemInfo.name = zo_strformat(SI_TOOLTIP_ITEM_NAME, GetItemName(itemInfo.bag, itemInfo.index))
+                listDialog:AddListItem(itemInfo)
+            end
+
+            --Added local function from file /esoui/ingame/crafting/keyboard/smithingresearch_keyboard.lua
+            local function SortComparator(left, right)
+                return left.data.name < right.data.name
+            end
+
+            listDialog:CommitList(SortComparator)
+
+            listDialog:AddCustomControl(self.control, LIST_DIALOG_CUSTOM_CONTROL_LOCATION_BOTTOM)
+        end -- SMITHING_RESEARCH_SELECT.SetupDialog
+    },
+}
+
 --enable LF_QUICKSLOT
 helpers["QUICKSLOT_WINDOW"] = {
     version = 1,
