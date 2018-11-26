@@ -1,44 +1,46 @@
-local MAJOR, MINOR = "LibFilters-2.0", 3.7
+local MAJOR, MINOR = "LibFilters-2.0", 3.8
 local LibFilters, oldminor = LibStub:NewLibrary(MAJOR, MINOR)
 if not LibFilters then return end
 
 --some constants for your filters
-LF_INVENTORY             = 1
-LF_BANK_WITHDRAW         = 2
-LF_BANK_DEPOSIT          = 3
-LF_GUILDBANK_WITHDRAW    = 4
-LF_GUILDBANK_DEPOSIT     = 5
-LF_VENDOR_BUY            = 6
-LF_VENDOR_SELL           = 7
-LF_VENDOR_BUYBACK        = 8
-LF_VENDOR_REPAIR         = 9
-LF_GUILDSTORE_BROWSE     = 10
-LF_GUILDSTORE_SELL       = 11
-LF_MAIL_SEND             = 12
-LF_TRADE                 = 13
-LF_SMITHING_REFINE       = 14
-LF_SMITHING_CREATION     = 15
-LF_SMITHING_DECONSTRUCT  = 16
-LF_SMITHING_IMPROVEMENT  = 17
-LF_SMITHING_RESEARCH     = 18
-LF_ALCHEMY_CREATION      = 19
-LF_ENCHANTING_CREATION   = 20
-LF_ENCHANTING_EXTRACTION = 21
-LF_PROVISIONING_COOK     = 22
-LF_PROVISIONING_BREW     = 23
-LF_FENCE_SELL            = 24
-LF_FENCE_LAUNDER         = 25
-LF_CRAFTBAG              = 26
-LF_QUICKSLOT             = 27
-LF_RETRAIT               = 28
-LF_HOUSE_BANK_WITHDRAW   = 29
-LF_HOUSE_BANK_DEPOSIT    = 30
-LF_JEWELRY_REFINE        = 31
-LF_JEWELRY_CREATION      = 32
-LF_JEWELRY_DECONSTRUCT   = 33
-LF_JEWELRY_IMPROVEMENT   = 34
-LF_JEWELRY_RESEARCH      = 35
-LF_FILTER_MAX            = LF_JEWELRY_RESEARCH
+LF_INVENTORY                = 1
+LF_BANK_WITHDRAW            = 2
+LF_BANK_DEPOSIT             = 3
+LF_GUILDBANK_WITHDRAW       = 4
+LF_GUILDBANK_DEPOSIT        = 5
+LF_VENDOR_BUY               = 6
+LF_VENDOR_SELL              = 7
+LF_VENDOR_BUYBACK           = 8
+LF_VENDOR_REPAIR            = 9
+LF_GUILDSTORE_BROWSE        = 10
+LF_GUILDSTORE_SELL          = 11
+LF_MAIL_SEND                = 12
+LF_TRADE                    = 13
+LF_SMITHING_REFINE          = 14
+LF_SMITHING_CREATION        = 15
+LF_SMITHING_DECONSTRUCT     = 16
+LF_SMITHING_IMPROVEMENT     = 17
+LF_SMITHING_RESEARCH        = 18
+LF_ALCHEMY_CREATION         = 19
+LF_ENCHANTING_CREATION      = 20
+LF_ENCHANTING_EXTRACTION    = 21
+LF_PROVISIONING_COOK        = 22
+LF_PROVISIONING_BREW        = 23
+LF_FENCE_SELL               = 24
+LF_FENCE_LAUNDER            = 25
+LF_CRAFTBAG                 = 26
+LF_QUICKSLOT                = 27
+LF_RETRAIT                  = 28
+LF_HOUSE_BANK_WITHDRAW      = 29
+LF_HOUSE_BANK_DEPOSIT       = 30
+LF_JEWELRY_REFINE           = 31
+LF_JEWELRY_CREATION         = 32
+LF_JEWELRY_DECONSTRUCT      = 33
+LF_JEWELRY_IMPROVEMENT      = 34
+LF_JEWELRY_RESEARCH         = 35
+LF_SMITHING_RESEARCH_DIALOG = 36
+LF_JEWELRY_RESEARCH_DIALOG  = 37
+LF_FILTER_MAX               = LF_JEWELRY_RESEARCH_DIALOG
 
 function LibFilters:GetMaxFilter()
     return LF_FILTER_MAX
@@ -81,6 +83,8 @@ LibFilters.filters = {
     [LF_JEWELRY_DECONSTRUCT] = {},
     [LF_JEWELRY_IMPROVEMENT] = {},
     [LF_JEWELRY_RESEARCH]    = {},
+    [LF_SMITHING_RESEARCH_DIALOG] = {},
+    [LF_JEWELRY_RESEARCH_DIALOG] = {},
 }
 local filters = LibFilters.filters
 
@@ -120,6 +124,8 @@ local filterTypeToUpdaterName = {
     [LF_JEWELRY_DECONSTRUCT] = "SMITHING_DECONSTRUCT",
     [LF_JEWELRY_IMPROVEMENT] = "SMITHING_IMPROVEMENT",
     [LF_JEWELRY_RESEARCH]    = "SMITHING_RESEARCH",
+    [LF_SMITHING_RESEARCH_DIALOG] = "SMITHING_RESEARCH_DIALOG",
+    [LF_JEWELRY_RESEARCH_DIALOG] =  "SMITHING_RESEARCH_DIALOG",
 }
 
 --if the mouse is enabled, cycle its state to refresh the integrity of the control beneath it
@@ -131,6 +137,21 @@ local function SafeUpdateList(object, ...)
     object:UpdateList(...)
 
     if isMouseVisible then ShowMouse() end
+end
+
+--Function to update a ZO_ListDialog1 dialog's list contents
+local function dialogUpdaterFunc(listDialogControl)
+    if listDialogControl == nil then return nil end
+    --Get & Refresh the list dialog
+    local listDialog = ZO_InventorySlot_GetItemListDialog()
+    if listDialog ~= nil and listDialog.control ~= nil and listDialog.control.data ~= nil then
+        local data = listDialog.control.data
+        --Update the research dialog?
+        if listDialogControl == SMITHING_RESEARCH_SELECT then
+            --Re-Call the dialog's setup function to clear the list, check available data and filter the items (see helper.lua, helpers["SMITHING_RESEARCH_SELECT"])
+            listDialogControl.SetupDialog(listDialogControl, data.craftingType, data.researchLineIndex, data.traitIndex)
+        end
+    end
 end
 
 local inventoryUpdaters = {
@@ -192,6 +213,9 @@ local inventoryUpdaters = {
     end,
     HOUSE_BANK_WITHDRAW = function()
         SafeUpdateList(PLAYER_INVENTORY, INVENTORY_HOUSE_BANK )
+    end,
+    SMITHING_RESEARCH_DIALOG = function()
+        dialogUpdaterFunc(SMITHING_RESEARCH_SELECT)
     end,
 }
 
@@ -278,6 +302,9 @@ local function HookAdditionalFilters()
 
     LibFilters:HookAdditionalFilter(LF_HOUSE_BANK_WITHDRAW, PLAYER_INVENTORY.inventories[INVENTORY_HOUSE_BANK])
     LibFilters:HookAdditionalFilter(LF_HOUSE_BANK_DEPOSIT, BACKPACK_HOUSE_BANK_LAYOUT_FRAGMENT)
+
+    LibFilters:HookAdditionalFilter(LF_SMITHING_RESEARCH_DIALOG, SMITHING_RESEARCH_SELECT)
+    LibFilters:HookAdditionalFilter(LF_JEWELRY_RESEARCH_DIALOG, SMITHING_RESEARCH_SELECT)
 end
 LibFilters.helpers = {}
 local helpers = LibFilters.helpers
@@ -321,7 +348,7 @@ end
 function LibFilters:IsFilterRegistered(filterTag, filterType)
     if filterType == nil then
         --check whether there's any filter with this tag
-        for filterType, callbacks in pairs(filters) do
+        for _, callbacks in pairs(filters) do
             if callbacks[filterTag] ~= nil then
                 return true
             end
@@ -357,6 +384,7 @@ end
 function LibFilters:RequestUpdate(filterType)
     local updaterName = filterTypeToUpdaterName[filterType]
     local callbackName = "LibFilters_updateInventory_" .. updaterName
+d("[LibFilters]RequestUpdate, filterType: " ..tostring(filterType) .. ", updaterName: " .. tostring(updaterName))
     local function Update()
         EVENT_MANAGER:UnregisterForUpdate(callbackName)
         inventoryUpdaters[updaterName]()
@@ -371,7 +399,7 @@ end
 function LibFilters:UnregisterFilter(filterTag, filterType)
     if filterType == nil then
         --unregister all filters with this tag
-        for filterType, callbacks in pairs(filters) do
+        for _, callbacks in pairs(filters) do
             if callbacks[filterTag] ~= nil then
                 callbacks[filterTag] = nil
             end
